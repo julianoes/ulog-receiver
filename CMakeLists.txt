@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.12)
 project(ulog_receiver)
 
 add_definitions(
-    -std=c++11
+    -std=c++14
     -Wall
     -Wextra
 )

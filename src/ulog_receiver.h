@@ -1,0 +1,7 @@
+
+class UlogReceiver {
+public:
+
+private:
+};
+

@@ -12,5 +12,5 @@ cmake .. && make -j8
 ## Run
 
 ```
-src/ulog_receiver
+src/ulog_receiver_bin/ulog_receiver_bin
 ```

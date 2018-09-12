@@ -7,13 +7,14 @@
 #include <memory>
 #include <atomic>
 #include <string>
+#include <map>
 
 class MAVLinkComms {
 public:
     bool connect(int udp_port);
     void disconnect();
 
-    void register_message(uint16_t message_id, std::function<void(const mavlink_message_t&)> callback);
+    void register_message(uint32_t message_id, std::function<void(const mavlink_message_t&)> callback);
     bool send_message(const mavlink_message_t& message);
 
 private:
@@ -29,5 +30,7 @@ private:
     std::atomic<bool> _should_exit{false};
     std::unique_ptr<std::thread> _recv_thread{};
     std::unique_ptr<std::thread> _heartbeat_thread{};
+
+    std::map<uint32_t, std::function<void(const mavlink_message_t&)>> _callback_map{};
 };
 

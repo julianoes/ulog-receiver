@@ -2,10 +2,8 @@
 #include <iostream>
 #include <thread>
 #include <chrono>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <errno.h>
+#include <arpa/inet.h> // for inet_pton, inet_ntoa
+#include <errno.h> // for errno, strerror
 #include <unistd.h> // for close()
 
 #include "standard/mavlink.h"
@@ -51,9 +49,9 @@ void MAVLinkComms::disconnect()
     _recv_thread.reset();
 }
 
-void MAVLinkComms::register_message(uint16_t message_id, std::function<void(const mavlink_message_t&)> callback)
+void MAVLinkComms::register_message(uint32_t message_id, std::function<void(const mavlink_message_t&)> callback)
 {
-
+    _callback_map[message_id] = callback;
 }
 
 bool MAVLinkComms::send_message(const mavlink_message_t& message)
@@ -124,8 +122,13 @@ void MAVLinkComms::parse_datagram(char *buffer, int recv_len)
     // Note that one datagram can contain multiple mavlink messages.
     for (unsigned i = 0; i < recv_len; ++i) {
         if (mavlink_parse_char(0, buffer[i], &message, &status) == 1) {
-            // Move the pointer to the datagram forward by the amount parsed.
-            std::cout << "Parsed message " << message.msgid << std::endl;
+            // Check if someone needs this message.
+            auto it = _callback_map.find(message.msgid);
+            if (it != _callback_map.end()) {
+                if (it->second) {
+                    it->second(message);
+                }
+            }
         }
     }
 }

@@ -14,7 +14,7 @@ int main(int /* argc */, char** /* argv */)
     UlogReceiver ulog_receiver;
 
     while (true) {
-        std::cout << "Waiting ... " << std::endl;
+        std::cout << (mavlink_comms.is_connected() ? "Connected" : "Not connected") << std::endl;
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 

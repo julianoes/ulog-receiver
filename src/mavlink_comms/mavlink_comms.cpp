@@ -31,7 +31,7 @@ bool MAVLinkComms::connect(int udp_port)
 
     _should_exit = false;
     _recv_thread = std::make_unique<std::thread>(&MAVLinkComms::run_recv_thread, this);
-    _heartbeat_thread = std::make_unique<std::thread>(&MAVLinkComms::run_heartbeat_thread, this);
+    _common_thread = std::make_unique<std::thread>(&MAVLinkComms::run_common_thread, this);
 
     return true;
 }
@@ -43,10 +43,18 @@ void MAVLinkComms::disconnect()
     shutdown(_socket_fd, SHUT_RDWR);
     close(_socket_fd);
 
-    _heartbeat_thread->join();
-    _heartbeat_thread.reset();
+    _common_thread->join();
+    _common_thread.reset();
     _recv_thread->join();
     _recv_thread.reset();
+}
+
+bool MAVLinkComms::is_connected()
+{
+    auto now = std::chrono::steady_clock::now();
+
+    return ((now - _last_heartbeat_received).count()) * std::chrono::steady_clock::period::num /
+           static_cast<double>(std::chrono::steady_clock::period::den) < 3.0;
 }
 
 void MAVLinkComms::register_message(uint32_t message_id, std::function<void(const mavlink_message_t&)> callback)
@@ -120,7 +128,7 @@ void MAVLinkComms::parse_datagram(char *buffer, int recv_len)
     mavlink_message_t message;
 
     // Note that one datagram can contain multiple mavlink messages.
-    for (unsigned i = 0; i < recv_len; ++i) {
+    for (int i = 0; i < recv_len; ++i) {
         if (mavlink_parse_char(0, buffer[i], &message, &status) == 1) {
             // Check if someone needs this message.
             auto it = _callback_map.find(message.msgid);
@@ -129,27 +137,34 @@ void MAVLinkComms::parse_datagram(char *buffer, int recv_len)
                     it->second(message);
                 }
             }
+
+            if (message.msgid == MAVLINK_MSG_ID_HEARTBEAT) {
+                _last_heartbeat_received = std::chrono::steady_clock::now();
+            }
         }
     }
 }
 
-void MAVLinkComms::run_heartbeat_thread()
+void MAVLinkComms::run_common_thread()
 {
     while (!_should_exit) {
-
-        if (!_remote_ip.empty() && _remote_port != 0) {
-            mavlink_message_t message;
-            mavlink_msg_heartbeat_pack(1,
-                                       MAV_COMP_ID_SYSTEM_CONTROL+1, // +1 is a workaround to avoid a conflict
-                                       &message,
-                                       MAV_TYPE_GCS,
-                                       MAV_AUTOPILOT_INVALID,
-                                       0,
-                                       0,
-                                       0);
-            send_message(message);
-        }
-
+        send_heartbeat();
         std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+}
+
+void MAVLinkComms::send_heartbeat()
+{
+    if (!_remote_ip.empty() && _remote_port != 0) {
+        mavlink_message_t message;
+        mavlink_msg_heartbeat_pack(1,
+                                   MAV_COMP_ID_SYSTEM_CONTROL+1, // +1 is a workaround to avoid a conflict
+                                   &message,
+                                   MAV_TYPE_GCS,
+                                   MAV_AUTOPILOT_INVALID,
+                                   0,
+                                   0,
+                                   0);
+        send_message(message);
     }
 }

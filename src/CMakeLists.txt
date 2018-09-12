@@ -1,10 +1,3 @@
-
-add_executable(ulog_receiver
-    main.cpp
-    ulog_receiver.cpp
-)
-
-target_link_libraries(ulog_receiver
-    # nothing
-)
-
+add_subdirectory(mavlink_comms)
+add_subdirectory(ulog_receiver)
+add_subdirectory(ulog_receiver_bin)

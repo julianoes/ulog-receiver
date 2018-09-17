@@ -1,6 +1,6 @@
 # Ulog Receiver
 
-C++11 executable to receive a ulog stream.
+C++14 executable to receive a ulog stream.
 
 ## Build
 
